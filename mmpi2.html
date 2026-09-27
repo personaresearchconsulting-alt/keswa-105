@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Assessment MMPI-2 | Persona Research & Consulting</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --navy: #050533; --gold: #C5A059; --bg: #FFFFFF; }
+        * { box-sizing: border-box; -webkit-user-select: none; user-select: none; margin: 0; padding: 0; }
+        
+        /* Perbaikan: Menjamin body memenuhi layar tanpa scroll internal yang merusak header */
+        body { font-family: 'Inter', sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+        /* Perbaikan: Header dikunci di atas (Fixed) agar tidak terdorong navigasi */
+        header {
+            background: var(--navy); color: #E8D28E; padding: 15px; text-align: center;
+            border-bottom: 4px solid var(--gold); font-weight: 800; font-size: 14px; 
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
+        }
+
+        /* Perbaikan: Memberi jarak atas agar konten tidak tertutup header yang di-fixed */
+        .main-content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+            margin-top: 50px; 
+        }
+
+        .q-container { width: 100%; max-width: 600px; text-align: center; }
+        .q-text { font-size: 22px; font-weight: 600; color: #000; margin-bottom: 35px; line-height: 1.4; min-height: 70px; }
+
+        .ans-group { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
+        .btn-ans { 
+            width: 130px; padding: 20px; font-size: 18px; font-weight: 800; 
+            border: 2px solid #EEE; border-radius: 12px; cursor: pointer; background: white; 
+        }
+        .btn-ans.active-ya { border-color: var(--navy); color: var(--navy); border-width: 3px; }
+        .btn-ans.active-tidak { background: #ED6A5A; color: white; border-color: #ED6A5A; }
+
+        .btn-back { background: none; border: none; color: #999; font-size: 12px; cursor: pointer; font-weight: 600; }
+
+        /* NAVIGASI MICRO-GRID */
+        .nav-section { background: #F9F9F9; border-top: 1px solid #EEE; padding: 10px; flex-shrink: 0; }
+        .nav-scroll-area { max-width: 900px; margin: 0 auto; max-height: 100px; overflow-y: auto; padding: 2px; border: 1px solid #EEE; }
+        .nav-grid { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; }
+        
+        @media (max-width: 600px) { .nav-grid { grid-template-columns: repeat(15, 1fr); } }
+
+        .nav-item { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            border: 1px solid #E0E0E0; font-size: 7px; border-radius: 1px; color: #AAA; background: white; cursor: pointer;
+        }
+        .nav-item.filled { background: var(--navy); color: white; border-color: var(--navy); }
+        .nav-item.current { border: 1.5px solid var(--gold); background: #FFFDE7; color: var(--navy); font-weight: bold; }
+
+        footer { background: var(--navy); color: white; text-align: center; padding: 8px; font-size: 10px; flex-shrink: 0; }
+
+        .overlay { position: fixed; inset: 0; background: white; z-index: 1001; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-box { width: 100%; max-width: 380px; text-align: center; }
+        
+        .petunjuk {
+            text-align: left; background: #fdfce5; padding: 15px; border-radius: 8px;
+            border: 1px solid #e6db55; font-size: 12px; margin-bottom: 20px; line-height: 1.5; color: #555;
+        }
+
+        input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #DDD; border-radius: 8px; }
+        .btn-start { width: 100%; padding: 15px; background: var(--navy); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header>MMPI 2 - PSYMETRIC.ID</header>
+
+<div id="login-view" class="overlay">
+    <div class="login-box">
+        <h2 style="color: var(--navy); margin-bottom: 15px;">MMPI-2</h2>
+        <div class="petunjuk">
+            <strong>PETUNJUK PENGERJAAN:</strong><br>
+            1. Bacalah setiap pernyataan dengan teliti.<br>
+            2. Klik <b>YA</b> jika pernyataan sesuai dengan diri Anda.<br>
+            3. Klik <b>TIDAK</b> jika pernyataan tidak sesuai.<br>
+            4. Jangan biarkan ada soal yang terlewatkan.
+        </div>
+        <input type="text" id="nama" placeholder="Nama Lengkap">
+        <select id="jk">
+            <option value="">Jenis Kelamin</option>
+            <option value="L">Laki-laki</option>
+            <option value="P">Perempuan</option>
+        </select>
+        <button class="btn-start" onclick="mulaiTes()">MULAI TES</button>
+    </div>
+</div>
+
+<div id="test-view" style="display:none; flex-direction: column; height: 100%;">
+    <div class="main-content">
+        <div class="q-container">
+            <p id="q-count" style="font-size: 11px; color: var(--gold); font-weight: 700; margin-bottom: 5px;"></p>
+            <div id="q-txt" class="q-text"></div>
+            <div class="ans-group">
+                <button id="btn-YA" class="btn-ans" onclick="simpan('YA')">YA</button>
+                <button id="btn-TIDAK" class="btn-ans" onclick="simpan('TIDAK')">TIDAK</button>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-back" onclick="navigasi(-1)">← KEMBALI</button>
+                <button onclick="selesai()" style="margin-left: 25px; background: #D9534F; color: white; padding: 8px 20px; border-radius: 6px; border: none; font-weight: 800; cursor: pointer;">SIMPAN & DOWNLOAD HASIL</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-section">
+        <div class="nav-scroll-area">
+            <div class="nav-grid" id="nav-grid"></div>
+        </div>
+    </div>
+
+    <footer>WA: 0877 4251 5786 | Persona Research & Consulting &copy; 2026</footer>
+</div>
+
+<script>
+const DATA_SOAL = Array.from({length: 567}, (_, i) => {
+    const defaultList = ["Aku suka majalah teknik.",
+"Nafsu makanku baik.",
+"Aku bangun dengan rasa nyaman hampir setiap pagi.",
+"Aku mengira aku dapat menyukai pekerjaan perpustakaan.",
+"Aku mudah terbangun oleh suara berisik.",
+"Aku senang membaca berita kejahatan di surat kabar.",
+"Tangan dan kakiku biasanya terasa cukup hangat.",
+"Kehidupanku sehari-hari terisi penuh dengan hal-hal yang menyenangkan.",
+"Aku sanggup bekerja sebagaimana biasanya.",
+"Aku sering merasa seolah-olah ada yang menyumbat dalam leherku.",
+"Seseorang harus berusaha memahami mimpinya sebagai petunjuk dan peringatan baginya.",
+"Aku senang cerita detektif dan cerita yang menyeramkan.",
+"Aku bekerja dalam ketegangan yang sangat besar.",
+"Aku suka mencret-mencret sekali sebulan atau lebih.",
+"Sekali-kali aku berpikir tentang hal yang buruk untuk diutarakan.",
+"Aku merasa bahwa hidup ini tidak adil.",
+"Ayahku seorang yang baik.",
+"Aku jarang sekali terganggu sembelit (kesukaran buang air besar).",
+"Bilamana aku melamar pekerjaan baru, aku ingin tahu siapa yang harus aku hubungi lebih dahulu.",
+"Kehidupan seks-ku cukup memuaskan.",
+"Aku pernah ingin sekali lari dari rumah.",
+"Pada waktu-waktu tertentu aku tertawa dan menangis tanpa dapat aku kuasai.",
+"Aku terganggu oleh serangan rasa mual dan muntah-muntah.",
+"Aku merasa tak seorangpun yang mengerti akan diriku.",
+"Aku ingin menjadi penyanyi.",
+"Aku rasa lebih baik tutup mulut bila dalam kesulitan.",
+"Adakalanya aku dimasuki roh jahat.",
+"Prinsipku adalah berusaha membalas orang yang berbuat salah kepadaku.",
+"Dalam seminggu aku beberapa kali terganggu oleh penyakit lambung (maag).",
+"Kadang-kadang aku merasa ingin mengumpat-mencaci maki.",
+"Aku bermimpi buruk beberapa malam sekali.",
+"Aku merasa sukar untuk memusatkan perhatian pada suatu pekerjaan.",
+"Aku pernah mengalami hal yang aneh dan tidak masuk akal.",
+"Aku hampir selalu batuk.",
+"Seandainya orang-orang tidak menghalangi, aku akan dapat lebih berhasil.",
+"Aku jarang merisaukan kesehatanku.",
+"Aku belum pernah mengalami kesulitan karena kelakuan seks-ku.",
+"Dalam suatu masa tertentu waktu masih muda aku pernah melakukan pencurian kecil-kecilan.",
+"Kadang-kadang aku ingin membanting barang-barang.",
+"Pada umumnya aku lebih senang duduk melamun daripada mengerjakan yang lain.",
+"Aku pernah mengalami tidak dapat mengurus sesuatu selama berhari-hari, sampai berbulan-bulan, karena tidak dapat memulainya.",
+"Keluargaku tidak senang pada pekerjaan yang telah atau akan kupilih.",
+"Tidurku sering terganggu dan terjaga.",
+"Aku sering merasa seluruh kepalaku sakit.",
+"Aku tidak selalu mengatakan yang benar.",
+"Sekarang aku lebih mampu mengambil sesuatu keputusan daripada dahulu.",
+"Sekali atau lebih dalam seminggu aku tiba-tiba merasa panas tanpa sesuatu sebab yang jelas.",
+"Pada waktu bersama orang-orang, aku merasa terganggu oleh suara-suara yang aneh.",
+"Rasanya akan lebih baik apabila semua undang-undang ditiadakan.",
+"Roh-ku kadang-kadang meninggalkan tubuhku.",
+"Kesehatanku kurang lebih sama baiknya dengan kesehatan kawan-kawanku.",
+"Bila aku berpapasan dengan teman-teman sekolah atau kenalan lama, aku lebih suka menghindari mereka, kecuali bila mereka menegurku lebih dahulu.",
+"Seorang ulama (rohaniawan) dapat menyembuhkan dengan meletakkan tangannya di dahi orang sakit dan berdoa.",
+"Aku disukai oleh kebanyakan orang yang mengenalku.",
+"Aku hampir tak pernah terganggu rasa nyeri pada jantung atau dada.",
+"Selagi muda aku pernah dilarang masuk sekolah karena keberandalanku.",
+"Aku mudah bergaul.",
+"Segala sesuatu terjadi seperti yang diramalkan oleh nabi-nabi.",
+"Aku sering harus menerima perintah dari seseorang yang tidak lebih pandai daripadaku.",
+"Aku tidak membaca setiap tajuk rencana surat kabar harian.",
+"Aku menjalani hidup yang tidak dibenarkan.",
+"Pada beberapa bagian tubuhku sering terasa panas, kesemutan atau seperti ada yang merayap.",
+"Aku tidak mengalami kesulitan membuang air besar atau menahannya.",
+"Aku kadang-kadang tetap bertahan pada sesuatu hal, sehingga orang lain menjadi tidak sabar.",
+"Aku sayang pada ayahku.",
+"Aku melihat ada makhluk atau benda di sekitarku yang tidak tampak oleh orang lain.",
+"Aku ingin dapat berbahagia seperti orang lain.",
+"Aku hampir tidak pernah merasa sakit di tengkukku.",
+"Aku sangat tertarik pada orang yang berjenis kelamin sama denganku.",
+"Aku suka bermain congklak (dakon).",
+"Aku kira banyak orang suka melebih-lebihkan kemalangannya untuk memperoleh simpati dan pertolongan orang lain.",
+"Aku tiap-tiap kali terganggu oleh sakit ulu hati.",
+"Aku orang penting.",
+"Aku sering ingin menjadi wanita (atau jika Anda wanita: aku tidak pernah menyesal sebagai wanita).",
+"Aku kadang-kadang marah.",
+"Aku sering murung.",
+"Aku senang membaca kisah cinta.",
+"Aku menyukai sajak (puisi).",
+"Perasaanku tidak mudah tersinggung.",
+"Aku kadang-kadang mengganggu binatang.",
+"Aku senang juga pekerjaan polisi kehutanan.",
+"Aku mudah dikalahkan dalam perdebatan.",
+"Setiap orang yang mampu dan mau bekerja keras mempunyai kesempatan untuk berhasil.",
+"Akhir-akhir ini aku sukar melawan perasaan hilangnya harapan untuk menjadi orang yang berhasil.",
+"Kadang-kadang aku tertarik pada barang orang lain, seperti sepatu, pakaian dan sebagainya, sehingga ingin memegangnya atau mencurinya.",
+"Aku memang kurang kepercayaan pada diriku sendiri.",
+"Aku juga suka merangkai bunga.",
+"Pada umumnya aku merasa bahwa hidup ini ada manfaatnya.",
+"Aku berpendapat untuk meyakinkan orang diperlukan banyak usaha dan pembicaraan.",
+"Apa yang dapat aku kerjakan hari ini, kadang-kadang aku tunda sampai besok.",
+"Aku tahan dijadikan bahan lelucon.",
+"Aku ingin juga menjadi juru rawat.",
+"Menurut pendapatku sebagian besar orang akan membohong untuk memperoleh kemajuan.",
+"Aku banyak melakukan hal-hal yang kemudian kusesalkan.",
+"Aku rajin pergi ke tempat ibadah.",
+"Aku sedikit sekali bertengkar dengan keluargaku.",
+"Adakalanya aku terdorong dengan kuat untuk mengerjakan sesuatu yang merugikan dan menghebohkan.",
+"Aku percaya akan datangnya hari pengadilan Tuhan.",
+"Aku senang pergi ke pesta dan keramaian.",
+"Aku pernah dihadapkan pada persoalan yang begitu banyak kemungkinannya, sehingga aku tidak dapat mengambil keputusan.",
+"Aku berpendapat bahwa perempuan seyogyanya mendapat kebebasan seks setaraf dengan lelaki.",
+"Perjuanganku yang paling berat adalah melawan diri sendiri.",
+"Aku tidak terganggu oleh kejutan-kejutan otot (kedutan).",
+"Rasanya aku tidak peduli akan apa yang terjadi pada diriku.",
+"Bila aku sedang tidak enak badan kadang-kadang aku mudah tersinggung.",
+"Sering aku seakan-akan telah melakukan sesuatu yang salah atau jahat.",
+"Pada umumnya aku cukup senang.",
+"Kepalaku sering sekali terasa berat atau hidungku mampet.",
+"Ada orang yang sok tuan besar, sehingga walaupun aku tahu ia benar, rasanya aku ingin melakukan yang sebaliknya dari permintaannya.",
+"Seseorang telah memojokkan aku sehingga aku tidak bisa berkutik.",
+"Aku tidak pernah melakukan sesuatu.",
+"Aku sering merasa perlu mempertahankan dengan gigih apa yang kuanggap benar.",
+"Aku yakin manfaat dari penerapan hukum.",
+"Aku sering merasa seakan-akan ada ikatan yang menjepit kepalaku.",
+"Aku percaya adanya kehidupan setelah kematian.",
+"Aku lebih menyukai suatu pertandingan yang disertai taruhan.",
+"Kebanyakan orang berbuat jujur hanya karena takut ketahuan tidak jujur.",
+"Di sekolah aku kadang-kadang dipanggil kepala sekolah karena terlalu bandel atau nakal.",
+"Bicaraku cukup terkendali (lancar, jelas, tidak terlampau cepat).",
+"Sopan santunku di rumah tidak baik seperti jika bersama orang lain.",
+"Aku yakin bahwa ada komplotan yang memusuhiku.",
+"Aku merasa mampu dan pandai seperti orang lain.",
+"Aku yakin aku sedang diikuti (bayang-bayang).",
+"Banyak orang mempergunakan cara-cara yang agak kurang jujur untuk memperoleh keuntungan, daripada kehilangan keuntungan tersebut.",
+"Aku sering menderita sakit perut.",
+"Aku menyukai seni drama.",
+"Aku tahu siapa yang menjadi biang keladi dari kesulitan-kesulitanku.",
+"Aku tidak takut atau terganggu melihat darah.",
+"Kadang-kadang aku mengerti mengapa aku marah dan mengomel.",
+"Aku belum pernah batuk darah atau muntah-muntah.",
+"Aku tidak khawatir terserang penyakit.",
+"Aku suka mengumpulkan dan memelihara tanaman hias dan bunga.",
+"Aku belum pernah tertarik dan melakukan perbuatan seks yang tidak wajar.",
+"Ada masanya pikiranku lebih cepat daripada ucapanku.",
+"Bila aku yakin tidak seorangpun yang melihatnya, mungkin sekali aku akan menyelundup nonton tanpa karcis.",
+"Apabila ada orang yang berbuat sangat baik terhadapku, aku biasanya bertanya-tanya tentang latar belakang alasannya.",
+"Aku berpendapat bahwa kehidupan keluargaku sama menyenangkannya dengan kebanyakan keluarga yang kukenal.",
+"Kritik dan teguran sangat menyakiti hatiku.",
+"Kadang-kadang aku merasa seakan-akan aku harus melukai diriku sendiri atau orang lain.",
+"Aku senang memasak.",
+"Kelakuanku banyak dipengaruhi oleh adat kebiasaan lingkunganku.",
+"Kadang-kadang aku benar-benar merasa tidak berguna.",
+"Semasa muda aku menjadi anggota kelompok yang kompak dalam suka dan duka.",
+"Aku mau menjadi tentara.",
+"Adakalanya aku merasa ingin berkelahi dengan seseorang.",
+"Aku berjiwa pengembara dan tidak merasa bahagia bila tidak berkelana.",
+"Aku sering kehilangan kesempatan baik karena ragu-ragu membuat keputusan.",
+"Bila aku sedang sibuk dengan sesuatu yang penting dan orang datang menggangguku minta nasihat, aku menjadi tidak sabar.",
+"Aku biasa menulis pengalamanku dalam buku harian.",
+"Aku lebih senang menang daripada kalah dalam suatu permainan.",
+"Ada orang yang telah mencoba meracuni aku.",
+"Biasanya aku pergi tidur malam tanpa pikiran yang mengganggu.",
+"Beberapa tahun akhir ini aku pada umumnya sehat-sehat saja.",
+"Aku tidak pernah sakit ayan atau kejang-kejang.",
+"Berat badanku tetap saja, tidak naik maupun turun.",
+"Adakalanya aku melakukan sesuatu, yang kemudian tidak diketahui bahwa akulah yang melakukannya.",
+"Aku merasa bahwa aku sering dihukum tanpa sebab.",
+"Aku mudah menangis.",
+"Bila membaca, daya tangkapku tidak lagi sebaik dulu.",
+"Aku merasa tidak pernah sesenang sekarang ini.",
+"Aku kadang-kadang sakit kepala yang dengan diraba saja terasa nyeri.",
+"Aku mendongkol bila orang dengan cerdik menipuku, sehingga aku harus mengaku kalah.",
+"Aku tidak cepat lelah.",
+"Aku suka mempelajari dan membaca tentang apa yang sedang kukerjakan.",
+"Aku ingin mengenal orang-orang yang penting, karena dengan demikian aku merasa menjadi orang penting juga.",
+"Bila melihat ke bawah dari tempat yang tinggi, aku menjadi takut.",
+"Aku tidak akan menjadi gelisah bila salah seorang anggota keluarga terlibat dalam perkara hukum.",
+"Ada sesuatu yang tidak beres dengan pikiranku.",
+"Aku tidak takut mengurus orang.",
+"Aku tidak terganggu oleh apa yang orang pikirkan tentang diriku.",
+"Aku merasa canggung berbuat sesuatu yang menonjolkan diri dalam pesta, walaupun orang lain melakukannya.",
+"Aku sering harus berusaha keras untuk menyembunyikan rasa malu.",
+"Aku dahulu senang bersekolah.",
+"Aku belum pernah pingsan-pingsan.",
+"Aku jarang atau tidak pernah menderita pusing (tujuh keliling).",
+"Aku tidak terlampau takut terhadap ular.",
+"Ibuku orang baik.",
+"Daya ingatku baik saja.",
+"Masalah seks membuat aku risau.",
+"Aku sulit memulai percakapan bila bertemu dengan orang yang baru kukenal.",
+"Bila aku menjadi bosan, aku suka bikin ribut.",
+"Aku takut menjadi gila.",
+"Aku tidak setuju memberi uang kepada pengemis.",
+"Aku sering mendengar suara-suara yang tidak kuketahui asalnya.",
+"Pendengaranku rasanya sebaik orang lain.",
+"Tanganku sering gemetar bila aku mencoba melakukan sesuatu.",
+"Aku belum pernah merasa aneh dan canggung dengan tanganku.",
+"Aku dapat membaca lama tanpa melelahkan mataku.",
+"Aku sering merasa seluruh badanku lemas.",
+"Aku jarang sekali sakit kepala.",
+"Kadang-kadang bila malu dan tersinggung aku mandi keringat dan hal ini sangat menggangguku.",
+"Aku mudah saja menjaga keseimbangan waktu berjalan.",
+"Aku tidak menderita serangan selesma atau sesak napas.",
+"Aku pernah mengalami tidak mampu menguasai pergerakan dan pembicaraanku, walaupun sadar.",
+"Aku tidak selalu menyukai setiap orang yang kukenal.",
+"Aku suka mengunjungi tempat yang belum pernah kukunjungi.",
+"Seseorang telah mencoba merampas barang-barangku.",
+"Aku jarang sekali melamun.",
+"Anak-anak seharusnya diberi pelajaran tentang seks.",
+"Ada orang yang bermaksud mencoba mencuri buah pikiranku.",
+"Aku berpendapat bahwa perempuan seyogyanya mendapat kebebasan seks setaraf dengan lelaki.",
+"Perjuanganku yang paling berat adalah melawan diri sendiri.",
+"Aku tidak terganggu oleh kejutan-kejutan otot (kedutan).",
+"Rasanya aku tidak peduli akan apa yang terjadi pada diriku.",
+"Bila aku sedang tidak enak badan kadang-kadang aku mudah tersinggung.",
+"Sering aku seakan-akan telah melakukan sesuatu yang salah atau jahat.",
+"Pada umumnya aku cukup senang.",
+"Kepalaku sering sekali terasa berat atau hidungku mampet.",
+"Ada orang yang sok tuan besar, sehingga walaupun aku tahu ia benar, rasanya aku ingin melakukan yang sebaliknya dari permintaannya.",
+"Seseorang telah memojokkan aku sehingga aku tidak bisa berkutik.",
+"Aku tidak pernah melakukan sesuatu.",
+"Aku sering merasa perlu mempertahankan dengan gigih apa yang kuanggap benar.",
+"Aku yakin manfaat dari penerapan hukum.",
+"Aku sering merasa seakan-akan ada ikatan yang menjepit kepalaku.",
+"Aku percaya adanya kehidupan setelah kematian.",
+"Aku lebih menyukai suatu pertandingan yang disertai taruhan.",
+"Kebanyakan orang berbuat jujur hanya karena takut ketahuan tidak jujur.",
+"Di sekolah aku kadang-kadang dipanggil kepala sekolah karena terlalu bandel atau nakal.",
+"Bicaraku cukup terkendali (lancar, jelas, tidak terlampau cepat).",
+"Sopan santunku di rumah tidak baik seperti jika bersama orang lain.",
+"Aku yakin bahwa ada komplotan yang memusuhiku.",
+"Aku merasa mampu dan pandai seperti orang lain.",
+"Aku yakin aku sedang diikuti (bayang-bayang).",
+"Banyak orang mempergunakan cara-cara yang agak kurang jujur untuk memperoleh keuntungan, daripada kehilangan keuntungan tersebut.",
+"Aku sering menderita sakit perut.",
+"Aku menyukai seni drama.",
+"Aku tahu siapa yang menjadi biang keladi dari kesulitan-kesulitanku.",
+"Aku tidak takut atau terganggu melihat darah.",
+"Kadang-kadang aku mengerti mengapa aku marah dan mengomel.",
+"Aku belum pernah batuk darah atau muntah-muntah.",
+"Aku tidak khawatir terserang penyakit.",
+"Aku suka mengumpulkan dan memelihara tanaman hias dan bunga.",
+"Aku belum pernah tertarik dan melakukan perbuatan seks yang tidak wajar.",
+"Ada masanya pikiranku lebih cepat daripada ucapanku.",
+"Bila aku yakin tidak seorangpun yang melihatnya, mungkin sekali aku akan menyelundup nonton tanpa karcis.",
+"Apabila ada orang yang berbuat sangat baik terhadapku, aku biasanya bertanya-tanya tentang latar belakang alasannya.",
+"Aku berpendapat bahwa kehidupan keluargaku sama menyenangkannya dengan kebanyakan keluarga yang kukenal.",
+"Kritik dan teguran sangat menyakiti hatiku.",
+"Kadang-kadang aku merasa seakan-akan aku harus melukai diriku sendiri atau orang lain.",
+"Aku senang memasak.",
+"Kelakuanku banyak dipengaruhi oleh adat kebiasaan lingkunganku.",
+"Kadang-kadang aku benar-benar merasa tidak berguna.",
+"Semasa muda aku menjadi anggota kelompok yang kompak dalam suka dan duka.",
+"Aku mau menjadi tentara.",
+"Adakalanya aku merasa ingin berkelahi dengan seseorang.",
+"Aku berjiwa pengembara dan tidak merasa bahagia bila tidak berkelana.",
+"Aku sering kehilangan kesempatan baik karena ragu-ragu membuat keputusan.",
+"Bila aku sedang sibuk dengan sesuatu yang penting dan orang datang menggangguku minta nasihat, aku menjadi tidak sabar.",
+"Aku biasa menulis pengalamanku dalam buku harian.",
+"Aku lebih senang menang daripada kalah dalam suatu permainan.",
+"Ada orang yang telah mencoba meracuni aku.",
+"Biasanya aku pergi tidur malam tanpa pikiran yang mengganggu.",
+"Beberapa tahun akhir ini aku pada umumnya sehat-sehat saja.",
+"Aku tidak pernah sakit ayan atau kejang-kejang.",
+"Berat badanku tetap saja, tidak naik maupun turun.",
+"Adakalanya aku melakukan sesuatu, yang kemudian tidak diketahui bahwa akulah yang melakukannya.",
+"Aku merasa bahwa aku sering dihukum tanpa sebab.",
+"Aku mudah menangis.",
+"Bila membaca, daya tangkapku tidak lagi sebaik dulu.",
+"Aku merasa tidak pernah sesenang sekarang ini.",
+"Aku kadang-kadang sakit kepala yang dengan diraba saja terasa nyeri.",
+"Aku mendongkol bila orang dengan cerdik menipuku, sehingga aku harus mengaku kalah.",
+"Aku tidak cepat lelah.",
+"Aku suka mempelajari dan membaca tentang apa yang sedang kukerjakan.",
+"Aku ingin mengenal orang-orang yang penting, karena dengan demikian aku merasa menjadi orang penting juga.",
+"Bila melihat ke bawah dari tempat yang tinggi, aku menjadi takut.",
+"Aku tidak akan menjadi gelisah bila salah seorang anggota keluarga terlibat dalam perkara hukum.",
+"Ada sesuatu yang tidak beres dengan pikiranku.",
+"Aku tidak takut mengurus orang.",
+"Aku tidak terganggu oleh apa yang orang pikirkan tentang diriku.",
+"Aku merasa canggung berbuat sesuatu yang menonjolkan diri dalam pesta, walaupun orang lain melakukannya.",
+"Aku sering harus berusaha keras untuk menyembunyikan rasa malu.",
+"Aku dahulu senang bersekolah.",
+"Aku belum pernah pingsan-pingsan.",
+"Aku jarang atau tidak pernah menderita pusing (tujuh keliling).",
+"Aku tidak terlampau takut terhadap ular.",
+"Ibuku orang baik.",
+"Daya ingatku baik saja.",
+"Masalah seks membuat aku risau.",
+"Aku sulit memulai percakapan bila bertemu dengan orang yang baru kukenal.",
+"Bila aku menjadi bosan, aku suka bikin ribut.",
+"Aku takut menjadi gila.",
+"Aku tidak setuju memberi uang kepada pengemis.",
+"Aku sering mendengar suara-suara yang tidak kuketahui asalnya.",
+"Pendengaranku rasanya sebaik orang lain.",
+"Tanganku sering gemetar bila aku mencoba melakukan sesuatu.",
+"Aku belum pernah merasa aneh dan canggung dengan tanganku.",
+"Aku dapat membaca lama tanpa melelahkan mataku.",
+"Aku sering merasa seluruh badanku lemas.",
+"Aku jarang sekali sakit kepala.",
+"Kadang-kadang bila malu dan tersinggung aku mandi keringat dan hal ini sangat menggangguku.",
+"Aku mudah saja menjaga keseimbangan waktu berjalan.",
+"Aku tidak menderita serangan selesma atau sesak napas.",
+"Aku pernah mengalami tidak mampu menguasai pergerakan dan pembicaraanku, walaupun sadar.",
+"Aku tidak selalu menyukai setiap orang yang kukenal.",
+"Aku suka mengunjungi tempat yang belum pernah kukunjungi.",
+"Seseorang telah mencoba merampas barang-barangku.",
+"Aku jarang sekali melamun.",
+"Anak-anak seharusnya diberi pelajaran tentang seks.",
+"Ada orang yang bermaksud mencoba mencuri buah pikiranku.",
+"Pada umumnya hidup ini kurasakan berat.",
+"Aku belum pernah mengalami kesulitan karena kelakuan seks-ku.",
+"Aku sangat peka terhadap beberapa persoalan, sehingga aku tidak membicarakannya.",
+"Aku merasa sukar untuk bicara di depan kelas waktu sekolah.",
+"Walaupun bersama-sama dengan orang banyak, aku sering merasa kesepian.",
+"Aku mendapat pengertian (simpati) yang semestinya.",
+"Aku menolak ikut serta dalam beberapa permainan karena aku kurang pandai.",
+"Aku pernah ingin sekali lari dari rumah.",
+"Aku merasa dapat berkawan semudah orang lain.",
+"Kehidupan seks-ku cukup memuaskan.",
+"Dalam suatu masa tertentu waktu masih muda aku pernah melakukan pencurian kecil-kecilan.",
+"Aku tidak suka ada orang di sekitarku.",
+"Orang yang memberikan peluang mencuri dengan meninggalkan barang berharga begitu saja, sama salahnya dengan yang mencurinya.",
+"Sekali-kali aku berpikir tentang hal yang buruk untuk diutarakan.",
+"Aku merasa bahwa hidup ini tidak adil.",
+"Hampir setiap orang akan berbohong untuk menghindarkan kesulitan.",
+"Aku lebih perasa daripada kebanyakan orang lain.",
+"Kehidupanku sehari-hari selalu terisi dengan hal-hal yang menyenangkan dan menarik.",
+"Kebanyakan orang dalam hati kecilnya tidak begitu suka mengulurkan tangan untuk menolong orang lain.",
+"Kebanyakan mimpiku adalah tentang seks.",
+"Aku mudah sekali menjadi canggung (kikuk).",
+"Aku merisaukan soal uang dan pekerjaan.",
+"Aku pernah mengalami hal yang aneh dan tidak masuk akal.",
+"Aku belum pernah jatuh cinta pada siapapun juga.",
+"Beberapa hal yang telah dilakukan oleh anggota keluargaku menakutkan aku.",
+"Pada waktu-waktu tertentu aku tertawa dan menangis tanpa dapat aku kuasai.",
+"Orang tuaku sering membuat aku menuruti kehendaknya, walaupun pada hematku hal itu tidak masuk akal.",
+"Aku merasa sukar memusatkan perhatian pada suatu pekerjaan.",
+"Aku hampir tidak pernah bermimpi.",
+"Aku tidak pernah lumpuh atau mengalami kelemahan otot yang berat.",
+"Seandainya orang-orang tidak menghalangi, aku akan dapat lebih berhasil.",
+"Kadang-kadang suaraku menghilang atau berubah, walaupun aku tidak sakit leher (flu).",
+"Aku merasa tak seorangpun yang mengerti akan diriku.",
+"Adakalanya tercium olehku bau yang aneh.",
+"Aku tidak dapat memusatkan perhatian pada satu hal saja.",
+"Aku mudah menjadi kurang sabar terhadap orang-orang.",
+"Aku hampir selalu merasa cemas tentang sesuatu hal atau seseorang.",
+"Sesungguhnya lebih banyak persoalan yang kurisaukan daripada yang seharusnya.",
+"Sering aku ingin mengalami mati.",
+"Kadang-kadang aku begitu tegang sehingga sukar tidur.",
+"Kadang-kadang pendengaranku sedemikian tajamnya, sehingga aku merasa terganggu.",
+"Aku cepat lupa tentang apa yang dikatakan orang padaku.",
+"Biasanya aku harus berpikir dulu sebelum melakukan sesuatu, walaupun mengenai hal yang sepele.",
+"Sering aku menghindar bertemu seseorang dengan merubah arah langkahku.",
+"Aku sering merasa seakan-akan semuanya semu (seperti impian belaka).",
+"Aku mempunyai kebiasaan menghitung benda-benda yang tidak perlu seperti tiang listrik dan lain-lain.",
+"Aku tidak mempunyai musuh yang benar-benar bermaksud mencelakakan aku.",
+"Aku cenderung untuk waspada terhadap orang yang agak berlebihan ramahnya.",
+"Aku merasa pikiranku aneh dan asing.",
+"Bila aku seorang diri, aku mendengar suara aneh dan asing.",
+"Aku menjadi cemas dan gelisah bila aku harus bepergian.",
+"Aku takut akan benda dan orang yang kuketahui tidak akan membahayakan diriku.",
+"Aku tidak takut masuk sendirian ke dalam suatu ruangan yang di dalamnya berkumpul orang-orang yang sedang bicara.",
+"Aku takut mempergunakan pisau dan benda tajam atau runcing.",
+"Kadang-kadang aku senang menyakiti orang yang kusayangi.",
+"Aku merasa lebih sukar untuk memusatkan perhatian daripada orang lain.",
+"Aku telah beberapa kali meninggalkan suatu pekerjaan karena merasa kurang mampu.",
+"Kata-kata busuk dan sering-sering mengerikan timbul dalam pikiranku dan aku tidak dapat menghilangkannya.",
+"Kadang-kadang pikiran-pikiran yang tidak penting memenuhi benak dan mengganggu selama beberapa hari.",
+"Hampir setiap hari ada saja kejadian yang menakutkan aku.",
+"Aku cenderung menganggap segala sesuatu secara sungguh-sungguh (serius).",
+"Aku lebih perasa daripada kebanyakan orang lain.",
+"Adakalanya aku senang disakiti oleh orang yang kucintai.",
+"Orang-orang mengatakan hal-hal yang menghina dan kasar tentang diriku.",
+"Aku merasa gelisah dalam rumah.",
+"Walaupun bersama-sama dengan orang banyak, aku sering merasa kesepian.",
+"Aku tidak takut api.",
+"Aku kadang-kadang menjauhi orang lain karena takut mengatakan sesuatu yang mungkin akan kusesalkan.",
+"Agama bagiku tidak jadi soal.",
+"Aku tak suka bekerja terburu-buru.",
+"Aku menghargai diriku sendiri secara wajar.",
+"Aku lebih suka mempunyai bermacam-macam hobi daripada yang itu-itu saja.",
+"Aku merasa yakin bahwa hanya ada satu agama yang benar.",
+"Pada waktu-waktu tertentu pikiranku bekerja lebih lambat daripada biasa.",
+"Bila aku merasa gembira, seseorang yang murung dapat merusak suasana perasaanku.",
+"Polisi biasanya jujur.",
+"Dalam pesta aku lebih suka duduk sendiri atau dengan satu orang daripada bergabung dalam kelompok.",
+"Aku tidak suka melihat wanita merokok.",
+"Aku jarang sekali murung.",
+"Bila seseorang mengatakan hal yang bodoh tentang sesuatu yang kuketahui benar, aku mencoba membetulkannya.",
+"Orang-orang sering mengatakan bahwa aku pemarah.",
+"Aku berharap dapat menghilangkan kerisauanku akan ucapan-ucapanku yang mungkin menyakiti orang lain.",
+"Orang-orang sering mengecewakan aku.",
+"Aku merasa tidak sanggup menceritakan seluruh diriku kepada seseorang.",
+"Aku takut pada kilat.",
+"Aku suka membuat orang bertanya-tanya tentang apa yang akan kulakukan selanjutnya.",
+"Satu-satunya keajaiban yang aku ketahui hanyalah tipu muslihat.",
+"Aku takut sendirian dalam gelap.",
+"Rencana-rencanaku sering penuh kesukaran sehingga harus dibatalkan.",
+"Aku sering merasa sedih bila disalahartikan.",
+"Aku senang pergi ke pesta.",
+"Aku takut angin ribut.",
+"Kuda yang tidak mau menarik beban harus dicambuk dan ditendang.",
+"Aku sering meminta nasihat pada orang lain.",
+"Masa depan terlalu tidak menentu untuk membuat rencana sungguh-sungguh.",
+"Walaupun semuanya berjalan baik, aku sering masa bodoh.",
+"Kadang-kadang aku merasa kesulitan menumpuk sehingga aku tidak mampu mengatasinya.",
+"Aku sering berangan-angan menjadi anak-anak kembali.",
+"Aku tidak mudah dibuat marah.",
+"Bila aku diberi kesempatan, aku dapat berbuat sesuatu yang bermanfaat bagi masyarakat.",
+"Aku tidak takut air.",
+"Aku sering harus berfikir berhari-hari sebelum memutuskan sesuatu.",
+"Bukan main senangnya untuk hidup di jaman ini dengan begitu banyak kejadian-kejadian.",
+"Orang-orang sering menyalah-artikan i'tikad baikku, apabila aku berusaha menolong dan membetulkan mereka.",
+"Aku tak ada gangguan menelan.",
+"Aku sering menjumpai orang-orang yang dianggap ahli, yang ternyata tidak lebih unggul daripadaku.",
+"Biasanya aku tenang dan mudah menjadi gelisah.",
+"Biasanya aku dapat menyembunyikan perasaanku sedemikian rupa sehingga orang-orang dapat menyakiti hatiku tanpa mereka sadari.",
+"Adakalanya aku melelahkan diriku sendiri karena bekerja melampaui batas.",
+"Aku akan merasa gembira sekali bila dapat mengalahkan seorang penipu dengan cara-cara sendiri.",
+"Aku merasa seperti orang yang gagal, bila mendengar keberhasilan seseorang yang kukenal baik.",
+"Aku tidak takut berobat ke dokter untuk suatu penyakit atau luka.",
+"Aku patut dihukum berat untuk dosa-dosaku.",
+"Aku biasanya menganggap kekecewaan begitu serius, sehingga aku tidak dapat melupakannya.",
+"Apabila aku diberi kesempatan, aku bisa menjadi pemimpin yang baik.",
+"Walaupun aku tahu bahwa aku dapat menyelesaikan sesuatu pekerjaan dengan baik, namun demikian aku merasa terganggu bila orang memperhatikan aku sewaktu bekerja.",
+"Bila seseorang mencoba mendahului aku sewaktu antri, aku sering merasa jengkel, sehingga aku merasa perlu menegurnya.",
+"Adakalanya aku merasa tak berguna sama sekali.",
+"Semasa muda aku sering membolos sekolah.",
+"Aku pernah mengalami sesuatu mukjizat dalam agama.",
+"Satu atau lebih dari anggota keluargaku sangat gugup.",
+"Aku pernah merasa malu akan pekerjaan yang dilakukan oleh salah satu atau beberapa anggota keluargaku.",
+"Aku suka sekali mengail ikan.",
+"Hampir selalu aku merasa lapar.",
+"Aku sering bermimpi.",
+"Adakalanya aku harus bersikap kasar terhadap orang-orang yang tidak sopan dan menjengkelkan.",
+"Aku merasa malu mendengar cerita jorok.",
+"Aku suka membaca tajuk rencana dalam surat kabar.",
+"Aku suka mengikuti kuliah tentang mata pelajaran yang bermutu.",
+"Aku tertarik kepada orang berjenis kelamin lain denganku.",
+"Aku banyak risau tentang kemungkinan kemalangan.",
+"Aku mempunyai pendirian politik yang kokoh.",
+"Aku mempunyai kawan-kawan yang khayal (aku sering didampingi oleh orang-orang dalam khayalan).",
+"Aku ingin menjadi pembalap mobil.",
+"Biasanya aku lebih suka bekerja dengan wanita-wanita.",
+"Pada umumnya orang menuntut penghargaan lebih bagi hak-hak mereka, daripada mereka mau menghargai hak-hak orang lain.",
+"Seseorang boleh saja mengingkari hukum, asal saja tidak melanggarnya.",
+"Ada beberapa orang yang kubenci sedemikian rupa, sehingga dalam hati aku merasa senang bila mereka tertangkap.",
+"Aku merasa gelisah bila harus menunggu.",
+"Aku berusaha mengingat-ingat cerita yang baik untuk disampaikan kepada orang lain.",
+"Aku menyukai wanita jangkung.",
+"Adakalanya aku tidak dapat tidur karena risau.",
+"Aku mudah melepaskan sesuatu yang akan kukerjakan, karena orang lain menganggap bahwa aku tidak betul melakukannya.",
+"Aku tidak berusaha membetulkan orang-orang yang mengatakan suatu pendapat yang bodoh.",
+"Semasa kecilku aku suka hal-hal yang mendebarkan.",
+"Aku suka berjudi kecil-kecilan.",
+"Aku sering cenderung untuk berusaha sedapat mungkin mengalihkan pendapat seseorang yang menentangku.",
+"Aku terganggu oleh orang-orang yang memperhatikan aku di luar, di mobil, di toko dan sebagainya.",
+"Aku senang menghadiri pertemuan sosial hanya untuk bersama orang-orang lain.",
+"Aku senang keramaian.",
+"Kerisauanku seakan-akan menghilang jika aku berkumpul dengan kawan-kawan yang bergembira.",
+"Aku suka mengolok-olok orang.",
+"Sewaktu masa kanak-kanak aku tidak berusaha menjadi anggota suatu kelompok atau komplotan.",
+"Aku dapat hidup bahagia sendirian dalam satu pondok di hutan atau pegunungan.",
+"Aku jarang diikutsertakan dalam membicarakan orang lain oleh kelompokku.",
+"Seseorang seyogyanya jangan dihukum karena melanggar suatu undang-undang yang dianggapnya tidak masuk akal.",
+"Menurut hematku seseorang jangan sekali-kali mencoba minum minuman keras.",
+"Tokoh pria yang mendidikku semasa kecilku bersikap sangat ketat terhadap diriku.",
+"Aku mempunyai satu atau lebih kebiasaan-kebiasaan yang melekat, sehingga tak ada gunanya untuk melawannya.",
+"Aku jarang (atau sama sekali tidak) minum minuman keras.",
+"Sukar bagiku meninggalkan suatu pekerjaan walau untuk sementara waktu saja.",
+"Tak sukar bagiku untuk menahan atau melepaskan air seni.",
+"Dulu aku senang bermain engklek.",
+"Aku tak pernah mendapat penglihatan ghaib.",
+"Beberapa kali aku mengubah pendapatku mengenai karya hidupku.",
+"Aku tak pernah minum obat-obatan kecuali atas perintah dokter.",
+"Aku sering menghafal angka-angka yang tak perlu.",
+"Aku sering menyesal karena aku pemarah.",
+"Aku sering melihat bahwa orang iri hati pada ide-ide yang baik.",
+"Soal-soal seks memuakkan aku.",
+"Di sekolah angka-angkaku mengenai kelakuan biasanya buruk.",
+"Aku terpesona oleh api.",
+"Bila mungkin aku akan selalu menghindar diri dari keramaian.",
+"Aku kencing tidak lebih sering daripada orang lain.",
+"Bila aku disudutkan, aku akan menceritakan bagian kebenaran yang tidak merugikan aku.",
+"Aku adalah utusan khusus dari Tuhan.",
+"Aku akan memikul seluruh tanggung jawab jika bersama-sama bersalah.",
+"Aku tak pernah menjadi gelisah karena kesulitan anggota keluargaku.",
+"Aku tidak berkeberatan menghadapi orang yang tak kukenal.",
+"Aku sering takut gelap.",
+"Aku pernah pura-pura sakit untuk menghindari sesuatu.",
+"Dalam kendaraan umum aku sering bercakap dengan orang tak dikenal.",
+"Nabi-nabi dapat membuat mukjizat.",
+"Aku mempunyai kekurangan besar yang harus kuterima.",
+"Laki-laki biasanya berpikir tentang seks saat bersama wanita.",
+"Aku pernah kencing darah.",
+"Aku cepat menyerah bila keadaan memburuk.",
+"Aku berdoa beberapa kali seminggu.",
+"Aku bersimpati pada orang yang menderita.",
+"Aku membaca kitab suci beberapa kali seminggu.",
+"Aku tidak sabar pada orang yang merasa hanya satu agama yang benar.",
+"Aku khawatir akan terjadi gempa bumi.",
+"Aku lebih senang pekerjaan yang butuh perhatian penuh.",
+"Aku takut di ruang sempit tertutup.",
+"Aku biasanya jujur saat dibetulkan orang lain.",
+"Aku tak pernah melihat benda menjadi dua.",
+"Aku suka kisah petualangan.",
+"Selalu baik untuk berterus terang.",
+"Aku sering merisaukan hal kecil berlebihan.",
+"Aku mudah mendukung pendapat yang baik.",
+"Aku biasanya mencari jalan keluar sendiri daripada minta tolong orang lain.",
+"Aku suka memberi tahu kepada orang-orang tentang pendirianku.",
+"Tidak biasa bagiku untuk menyatakan secara tegas setuju atau tidak setuju tentang perbuatan orang lain.",
+"Aku tidak berusaha untuk menyembunyikan pendapatku yang kurang baik terhadap seseorang meskipun dia akan tersinggung.",
+"Adakalanya aku merasa begitu bersemangat, sehingga aku tidak perlu tidur berhari-hari.",
+"Aku adalah orang yang selalu tegang.",
+"Aku sering bekerja di bawah pimpinan orang yang mengatur sehingga mereka mendapat pujian dan kesalahan menjadi tanggung jawab bawahan.",
+"Indera penciumanku sebaik orang lain.",
+"Kadang-kadang sukar bagiku untuk mempertahankan hakku, karena aku terlalu pendiam.",
+"Sampah menakutkan dan memuakkan aku.",
+"Aku mempunyai alam khayalan yang tak kuceritakan kepada siapapun juga.",
+"Aku tidak suka mandi.",
+"Menurut hematku Gadjah Mada lebih agung daripada Hayam Wuruk.",
+"Aku lebih suka wanita yang kelaki-lakian.",
+"Di rumahku selalu tersedia kebutuhan sehari-hari.",
+"Beberapa anggota keluargaku mudah naik darah.",
+"Tak ada sesuatu pun yang dapat kulakukan dengan baik.",
+"Aku sering merasa berdosa karena pura-pura menyesal.",
+"Ada sesuatu yang tidak beres dengan alat kelaminku.",
+"Aku selalu mempertahankan pendirianku dengan gigih.",
+"Bila dalam suatu kelompok aku diminta memulai diskusi, aku tidak akan malu.",
+"Aku tidak takut laba-laba.",
+"Wajahku tak pernah tersipu-sipu.",
+"Aku tak takut ketularan penyakit dari pegangan pintu.",
+"Aku dibuat bingung oleh binatang-binatang tertentu.",
+"Masa depanku suram.",
+"Keluargaku mempunyai hubungan baik sekali.",
+"Aku tersipu-sipu tidak lebih dari orang lain.",
+"Aku ingin mengenakan pakaian mahal.",
+"Aku sering takut tersipu-sipu.",
+"Orang-orang mudah merubah pendirianku.",
+"Aku dapat tahan sakit seperti orang lain.",
+"Aku tak terganggu oleh gas perut.",
+"Aku adalah orang terakhir yang menyerah pada persoalan.",
+"Hampir selalu mulutku terasa kering.",
+"Aku menjadi marah bila orang membuatku terburu-buru.",
+"Aku ingin berburu singa di Afrika.",
+"Aku suka pekerjaan penjahit pakaian wanita atau anak-anak.",
+"Aku tak takut tikus.",
+"Mukaku tak pernah lumpuh.",
+"Kulitku sangat peka terhadap sentuhan.",
+"Aku tak pernah buang air besar hitam encer.",
+"Beberapa kali seminggu aku merasa sesuatu yang menakutkan akan terjadi.",
+"Aku sering merasa lelah.",
+"Kadang-kadang aku bermimpi hal yang sama terus menerus.",
+"Aku senang membaca tentang sejarah.",
+"Aku senang pesta dan pertemuan sosial.",
+"Bila bisa, aku menghindari pertunjukan seks.",
+"Aku mundur saat menghadapi kesulitan.",
+"Aku suka memperbaiki kunci pintu.",
+"Kadang-kadang aku yakin orang lain tahu pikiranku.",
+"Aku senang membaca ilmu pengetahuan.",
+"Aku takut sendirian di tempat luas terbuka.",
+"Andaikata aku seniman, aku suka menggambar anak-anak.",
+"Kadang-kadang aku merasa akan menjadi gila.",
+"Aku sangat teliti dalam berdandan.",
+"Aku ingin menjadi sekretaris pribadi.",
+"Banyak orang bersalah karena tingkah laku seks.",
+"Aku sering terbangun ketakutan di malam hari.",
+"Aku sering lupa meletakkan barang.",
+"Aku senang mengendarai kuda.",
+"Semasa kecil aku lebih dekat dengan wanita.",
+"Aku lebih suka kisah petualangan daripada kisah cinta.",
+"Mudah bagiku meninggalkan pekerjaan bila orang lain menganggapnya tidak berguna.",
+"Aku merasa akan jatuh bila di tempat tinggi.",
+"Aku senang adegan cinta dalam film.",
+"Mudah sekali aku meninggalkan sesuatu yang akan kukerjakan apabila orang lain merasa tak ada gunanya.",];
+    return defaultList[i] || `Pernyataan MMPI-2 nomor ${i + 1}.`;
+});
+
+let currentIndex = 0;
+let jawaban = new Array(567).fill(null);
+
+function mulaiTes() {
+    if(!document.getElementById('nama').value || !document.getElementById('jk').value) return alert("Data tidak lengkap.");
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('test-view').style.display = 'flex';
+    initNav();
+    renderSoal();
+}
+
+function initNav() {
+    const grid = document.getElementById('nav-grid');
+    grid.innerHTML = '';
+    DATA_SOAL.forEach((_, i) => {
+        const item = document.createElement('div');
+        item.className = 'nav-item';
+        item.id = `nav-${i}`;
+        item.innerText = i + 1;
+        item.onclick = () => { currentIndex = i; renderSoal(); };
+        grid.appendChild(item);
+    });
+}
+
+function renderSoal() {
+    document.getElementById('q-count').innerText = `NOMOR ${currentIndex + 1} DARI 567`;
+    document.getElementById('q-txt').innerText = DATA_SOAL[currentIndex];
+    
+    document.getElementById('btn-YA').className = 'btn-ans';
+    document.getElementById('btn-TIDAK').className = 'btn-ans';
+    if(jawaban[currentIndex] === 'YA') document.getElementById('btn-YA').classList.add('active-ya');
+    if(jawaban[currentIndex] === 'TIDAK') document.getElementById('btn-TIDAK').classList.add('active-tidak');
+
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('current'));
+    const currentNav = document.getElementById(`nav-${currentIndex}`);
+    if(currentNav) {
+        currentNav.classList.add('current');
+        currentNav.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+}
+
+function simpan(val) {
+    jawaban[currentIndex] = val;
+    document.getElementById(`nav-${currentIndex}`).classList.add('filled');
+    renderSoal();
+    setTimeout(() => { if (currentIndex < 566) { currentIndex++; renderSoal(); } }, 100);
+}
+
+function navigasi(s) {
+    if (currentIndex + s >= 0 && currentIndex + s < 567) { currentIndex += s; renderSoal(); }
+}
+
+function selesai() {
+    const sisa = jawaban.filter(a => a === null).length;
+    if (sisa > 0) return alert(`Gagal Simpan! Masih ada ${sisa} soal yang belum Anda jawab.`);
+
+    const nama = document.getElementById('nama').value.toUpperCase();
+    const jk = document.getElementById('jk').value;
+    const tgl = new Date().toLocaleString('id-ID');
+
+    let konten = `LAPORAN HASIL MMPI-2\n`;
+    konten += `--------------------------\n`;
+    konten += `NAMA      : ${nama}\n`;
+    konten += `JK        : ${jk}\n`;
+    konten += `TANGGAL   : ${tgl}\n`;
+    konten += `--------------------------\n\n`;
+
+    jawaban.forEach((ans, index) => {
+        konten += `${index + 1}. ${ans}\n`;
+    });
+
+    const blob = new Blob([konten], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `HASIL_MMPI2_${nama.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+</body>
+</html>
